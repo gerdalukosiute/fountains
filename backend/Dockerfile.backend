@@ -1,0 +1,41 @@
+# Stage 1: Build the Go application
+FROM golang:1.20 AS builder
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Install SQLite
+RUN apt-get update && apt-get install -y sqlite3 libsqlite3-dev
+
+# Copy go mod and sum files
+COPY go.mod go.sum ./
+
+# Download all dependencies
+RUN go mod download
+
+# Copy the source code into the container
+COPY . .
+
+# Build the application
+RUN CGO_ENABLED=1 GOOS=linux go build -o main ./server
+
+# Stage 2: Create the final image
+FROM debian:bookworm-slim
+
+# Install SQLite and SSL certificates
+RUN apt-get update && apt-get install -y sqlite3 ca-certificates && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /root/
+
+# Copy the binary from the builder stage
+COPY --from=builder /app/main .
+
+# Copy the SQLite database file if it exists
+COPY --from=builder /app/*.db ./
+
+# Expose port 8080 to the outside world
+EXPOSE 8080
+
+# Command to run the executable
+CMD ["./main"]
+
