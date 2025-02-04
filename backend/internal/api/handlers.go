@@ -11,11 +11,27 @@ import (
 	"github.com/gorilla/mux"
 )
 
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func SetupRoutes(router *mux.Router, db *sql.DB) {
-	router.HandleFunc("/fountains", createFountainHandler(db)).Methods("POST")
-	router.HandleFunc("/fountains", listFountainsHandler(db)).Methods("GET")
-	router.HandleFunc("/fountains/{id}", updateFountainHandler(db)).Methods("PUT")
-	router.HandleFunc("/fountains/{id}", deleteFountainHandler(db)).Methods("DELETE")
+	router.Use(corsMiddleware)
+	router.HandleFunc("/fountains", createFountainHandler(db)).Methods("POST", "OPTIONS")
+	router.HandleFunc("/fountains", listFountainsHandler(db)).Methods("GET", "OPTIONS")
+	router.HandleFunc("/fountains/{id}", updateFountainHandler(db)).Methods("PUT", "OPTIONS")
+	router.HandleFunc("/fountains/{id}", deleteFountainHandler(db)).Methods("DELETE", "OPTIONS")
 }
 
 func createFountainHandler(db *sql.DB) http.HandlerFunc {
