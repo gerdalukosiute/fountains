@@ -1,11 +1,25 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue';
 import axios from 'axios'
 
 const fountains = ref([])
 const newFountain = ref({ state: 'good', latitude: '', longitude: '' })
 const isLoading = ref(false)
 const error = ref(null)
+
+const isValidLatitude = computed(() => {
+  const lat = Number(newFountain.value.latitude)
+  return !isNaN(lat) && lat >= -90 && lat <= 90
+})
+
+const isValidLongitude = computed(() => {
+  const lng = Number(newFountain.value.longitude)
+  return !isNaN(lng) && lng >= -180 && lng <= 180
+})
+
+const isFormValid = computed(() => {
+  return isValidLatitude.value && isValidLongitude.value
+})
 
 const fetchFountains = async () => {
   isLoading.value = true
@@ -22,14 +36,16 @@ const fetchFountains = async () => {
 }
 
 const addFountain = async () => {
+  if (!isFormValid.value) {
+    error.value = 'Invalid latitude or longitude. Latitude should be between -90 to 90. Longitude between -180 to 180.'
+    return
+  }
+
   isLoading.value = true
   error.value = null
   try {
     const response = await axios.post('http://localhost:8080/fountains', newFountain.value)
     if (response.data) {
-      if (!Array.isArray(fountains.value)) {
-        fountains.value = []
-      }
       fountains.value.push(response.data)
       newFountain.value = { state: 'good', latitude: '', longitude: '' }
     } else {
